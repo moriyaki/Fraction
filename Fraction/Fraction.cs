@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace moriyaki.fraction
@@ -35,6 +36,7 @@ namespace moriyaki.fraction
         // a/b + c = (a/b + bc/b) = (a+bc / b)
         public static Fraction operator +(Fraction a, int b) => new Fraction(a.num + b * a.den, a.den);
 
+        // 減算
         // a/b - c = (a-bc / b)
         public static Fraction operator -(Fraction a, int b) => new Fraction(a.num - b * a.den, a.den);
 
@@ -43,6 +45,12 @@ namespace moriyaki.fraction
 
         // a/b * c = ac / b
         public static Fraction operator *(Fraction a, int c) => new Fraction(a.num * c, a.den);
+
+        // インクリメント
+        public static Fraction operator ++(Fraction a) => new Fraction(a.num + a.den, a.den);
+
+        // デクリメント
+        public static Fraction operator --(Fraction a) => new Fraction(a.num - a.den, a.den);
 
         // 除算
         // a/b / cd = ad/bc
@@ -99,6 +107,29 @@ namespace moriyaki.fraction
                 return $"{numerator} / {denominator}";
             }
         }
+
+        /// <summary>
+        /// 整数＋真分数にする
+        /// </summary>
+        /// <returns>整数と真分数のタプル</returns>
+        public (int, Fraction) GetProperFraction()
+        {
+            if (num < den)
+            {
+                return (0, new Fraction(num, den));
+            }
+            else
+            {
+                int k = num % den;
+                int n = num - k * den;
+                return (k, new Fraction(n, den));
+            }
+        }
+
+        /// <summary>
+        /// 小数点で取得
+        /// </summary>
+        public double Double { get { return (double)num / den; } }
     }
 
 }
