@@ -5,155 +5,259 @@ using System.Text;
 
 namespace moriyaki.fraction
 {
-	public  struct Fraction
-	{
-		private  int num;
-		private  int den;
+    public class Fraction
+    {
+        /// <summary>分母</summary>
+        public long Numerator { get; private set; }
+        /// <summary>分子</summary>
+        public long Denominator { get; private set; }
 
-		public Fraction(int numerator, int denominator = 1)
-		{
-			if (denominator == 0)
-			{
-				throw new ArgumentException("Denominator cannot be zero", nameof(denominator));
-			}
-			num = numerator;
-			den = denominator;
-		}
+        /// <summary>コンストラクタ</summary>
+        /// <exception cref="ArgumentException">分母が0</exception>
+        public Fraction(long numerator = 0, long denominator = 1)
+        {
+            if (denominator == 0)
+            {
+                throw new ArgumentException("Denominator cannot be zero", nameof(denominator));
+            }
+            // 分母が負なら分母を正にする
+            if (denominator > 0)
+            {
+                this.Numerator = numerator;
+                this.Denominator = denominator;
+            }
+            else
+            {
+                this.Numerator = -numerator;
+                this.Denominator = -denominator;
+            }
+        }
 
-		/// <summary>
-		/// 小数文字で受け取り
-		/// </summary>
-		/// <param name="decString"></param>
-		public Fraction(string decString)
-		{
-			var numbers = decString.Split('.');
-			if (numbers.Length > 2) throw new InvalidOperationException();
+        public Fraction(Fraction frac)
+        {
+            this.Numerator = frac.Numerator;
+            this.Denominator = frac.Denominator;
+        }
 
-			int numbase, dec;
+        /// <summary>通分するa/c と b/d の通分は ad/cd と bc/cd</summary>
+        public static (Fraction, Fraction) CommonDenominator(Fraction left, Fraction right)
+        {
+            var (common_left, common_right) = (new Fraction(left), new Fraction(right));
+            common_left.Denominator = left.Denominator * right.Denominator;
+            common_left.Numerator = left.Numerator * right.Denominator;
 
-			if (!Int32.TryParse(numbers[0], out numbase))
-			{
-				throw new InvalidOperationException();
-			}
-			if (!Int32.TryParse(numbers[1], out dec))
-			{
-				throw new InvalidOperationException();
-			}
-			den = (int)(Math.Pow(10, numbers[1].Length));
-			num = numbase * den + dec;
-		}
+            common_right.Denominator = right.Denominator * left.Denominator;
+            common_right.Numerator = right.Numerator * left.Denominator;
 
-		// 正の数
-		public static Fraction operator +(Fraction value) => value;
+            return (common_left, common_right);
+        }
 
-		// 負の数
-		public static Fraction operator -(Fraction a) => new Fraction(-a.num, a.den);
+        /// <summary>約分する</summary>
+        public static Fraction ReduceFraction(Fraction value)
+        {
+            var gcd = Gcd(value.Numerator, value.Denominator);
+            if (gcd != 0) { return new(value.Numerator / gcd, value.Denominator / gcd); }
+            return value;
+        }
+
+        /// <summary>ユークリッド互除法により最小公倍数を得る</summary>
+        public static long Gcd(long a, long b)
+        {
+            if (a < b)
+            {
+                return Gcd(b, a);
+            }
+            while (b != 0)
+            {
+                var reminder = a % b;
+                a = b;
+                b = reminder;
+            }
+            return a;
+        }
+
+        /// <summary>通分して大小確認</summary>
+        private static int Compare(Fraction left, Fraction right)
+        {
+            var (common_left, common_right) = CommonDenominator(left, right);
+
+            if (common_left.Numerator < common_right.Numerator) { return -1; }
+            if (common_left.Numerator > common_right.Numerator) { return 1; }
+            return 0;
+        }
+
+        /// <summary>分数同士が等しいか</summary>
+        public static bool operator ==(Fraction left, Fraction right)
+        {
+            return Compare(left, right) == 0;
+        }
+
+        /// <summary>分数同士が異なるか</summary>
+        public static bool operator !=(Fraction left, Fraction right)
+        {
+            return Compare(left, right) != 0;
+        }
+
+        /// <summary>左辺が右辺より大きいか</summary>
+        public static bool operator >(Fraction left, Fraction right)
+        {
+            return Compare(left, right) > 0;
+        }
+
+        /// <summary>左辺が右辺より小さいか</summary>
+        public static bool operator <(Fraction left, Fraction right)
+        {
+            return Compare(left, right) < 0;
+        }
+
+        /// <summary>左辺が右辺以上</summary>
+        public static bool operator >=(Fraction left, Fraction right)
+        {
+            return Compare(left, right) >= 0;
+        }
+
+        /// <summary>左辺が右辺以下</summary>
+        public static bool operator <=(Fraction left, Fraction right)
+        {
+            return Compare(left, right) <= 0;
+        }
 
 
-		public static implicit operator int(Fraction a) => a.num;
+        /// <summary>==実装に必要な、オブジェクトレベルで等しいかを確認する</summary>
+        public override bool Equals(object obj)
+        {
+            if (obj == null || !this.GetType().Equals(obj.GetType()))
+            {
+                return false;
+            }
+            Fraction right = (Fraction)obj;
+            var (common_left, common_right) = CommonDenominator(this, right);
+            return common_left.Numerator == common_right.Numerator;
+        }
 
-		// 加算
-		// a/b + c/d = (a*c + b*d) / b*d な公式 
-		public static Fraction operator +(Fraction a, Fraction b) => new Fraction(a.num * b.den + b.num * a.den, a.den * b.den);
+        /// <summary>!=実装に必要な、オブジェクトのハッシュコードを生成</summary>
+        public override int GetHashCode()
+        {
+            var value = "Fraction" + this.Numerator.ToString() + "/" + this.Denominator.ToString();
+            return value.GetHashCode();
+        }
 
-		// a/b + c = (a/b + bc/b) = (a+bc / b)
-		public static Fraction operator +(Fraction a, int b) => new Fraction(a.num + b * a.den, a.den);
+        /// <summary>正の数</summary>
+        public static Fraction operator +(Fraction value) => value;
 
-		// 減算
-		// a/b - c = (a-bc / b)
-		public static Fraction operator -(Fraction a, int b) => new Fraction(a.num - b * a.den, a.den);
+        /// <summary>負の数</summary>
+        public static Fraction operator -(Fraction value) => new(-value.Numerator, value.Denominator);
 
-		// 乗算
-		public static Fraction operator *(Fraction a, Fraction b) => new Fraction(a.num * b.num, a.den * b.den);
+        /// <summary>分数同士の加算</summary>
+        public static Fraction operator +(Fraction left, Fraction right)
+        {
+            var (common_left, common_right) = CommonDenominator(left, right);
+            return new(common_left.Numerator + common_right.Numerator, common_left.Denominator);
+        }
 
-		// a/b * c = ac / b
-		public static Fraction operator *(Fraction a, int c) => new Fraction(a.num * c, a.den);
+        /// <summary>分数と整数の加算 a/c + b = (a/c + bc/c) = a+bc / c </summary>
+        public static Fraction operator +(Fraction left, long right) =>
+            new(left.Numerator + right * left.Denominator, left.Denominator);
 
-		// インクリメント
-		public static Fraction operator ++(Fraction a) => new Fraction(a.num + a.den, a.den);
+        /// <summary>分数同士の減算</summary>
+        public static Fraction operator -(Fraction left, Fraction right)
+        {
+            var (common_left, common_right) = CommonDenominator(left, right);
+            return new(common_left.Numerator - common_right.Numerator, common_left.Denominator);
+        }
 
-		// デクリメント
-		public static Fraction operator --(Fraction a) => new Fraction(a.num - a.den, a.den);
-
-
-		// 除算
-		// a/b / cd = ad/bc
-		public static Fraction operator /(Fraction a, Fraction b)
-		{
-			if (b.num == 0)
-			{
-				throw new DivideByZeroException();
-			}
-			return new Fraction(a.num * b.den, a.den * b.num);
-		}
-
-		// a/b / c = a / bc
-		public static Fraction operator /(Fraction a, int c) => new Fraction(a.num, a.den * c);
+        /// <summary>分数と整数の減算 a/c + b = (a/c + bc/c) = a+bc / c </summary>
+        public static Fraction operator -(Fraction left, long right) =>
+            new(left.Numerator - right * left.Denominator, left.Denominator);
 
 
-		// 最大公約数の獲得(ユークリッド互除法)
-		public static int Gcd(int a, int b)
-		{
-			int abs_a = (a > 0) ? a : -a;
-			int abs_b = (b > 0) ? b : -b;
+        /// <summary>分数同士の乗算 a/c * b/d = ab / cd </summary>
+        public static Fraction operator *(Fraction left, Fraction right) =>
+            new(left.Numerator * right.Numerator, left.Denominator * right.Denominator);
 
-			if (abs_a < abs_b)
-				return Gcd(b, a);
+        /// <summary>分数と整数の乗算 a/c * b = ab / c </summary>
+        public static Fraction operator *(Fraction left, long right) =>
+            new(left.Numerator * right, left.Denominator);
 
-			while (abs_b != 0)
-			{
-				var remainder = abs_a % abs_b;
-				abs_a = abs_b;
-				abs_b = remainder;
-			}
-			return abs_a;
-		}
+        /// <summary>分数同士の除算 a/c / b/d = a/c * d/b = ad / cb </summary>
+        public static Fraction operator /(Fraction left, Fraction right)
+        {
+            if (right.Numerator == 0) { throw new DivideByZeroException("Cannot divide by zero."); }
+            return new(left.Numerator * right.Denominator, right.Numerator * left.Denominator);
+        }
 
-		public override string ToString()
-		{
-			int numerator = num;
-			int denominator = den;
+        /// <summary>分数と整数の除算 a/c / b = a / bc </summary>
+        public static Fraction operator /(Fraction left, long right)
+        {
+            if (right == 0) { throw new DivideByZeroException("Cannot divide by zero."); }
+            return new(left.Numerator, right * left.Denominator);
+        }
 
-			int gcd = Gcd(num, den);
-			if (gcd != 0)
-			{
-				numerator /= gcd;
-				denominator /= gcd;
-			}
+        /// <summary>long型に最適化したべき乗処理</summary>
+        /// <param name="var_base">底</param>
+        /// <param name="exponent">指数</param>
+        private static long Pow(long var_base, long exponent)
+        {
+            long odd_base = 1;
+            long optimize_base = var_base;
+            long optimize_exponent = exponent;
 
-			if (denominator == 1)
-			{
-				// 分母1なら整数表示
-				return $"{numerator}";
-			}
-			else
-			{
-				return $"{numerator} / {denominator}";
-			}
-		}
+            if (exponent % 2 == 1)
+            {
+                odd_base = var_base;
+                optimize_exponent--;
+            }
+            while (optimize_exponent > 1)
+            {
+                optimize_base *= optimize_base;
+                optimize_exponent /= 2;
+            }
+            return optimize_base * odd_base;
+        }
 
-		/// <summary>
-		/// 整数＋真分数にする
-		/// </summary>
-		/// <returns>整数と真分数のタプル</returns>
-		public (int, Fraction) GetProperFraction()
-		{
-			if (num < den)
-			{
-				return (0, new Fraction(num, den));
-			}
-			else
-			{
-				int k = num / den;
-				int n = num % den;
-				return (k, new Fraction(n, den));
-			}
-		}
+        /// <summary>最大値を取得</summary>
+        public static Fraction Max(Fraction left, Fraction right)
+        {
+            var (common_left, common_right) = CommonDenominator(left, right);
+            return common_left.Numerator > common_right.Numerator ? left : right;
+        }
 
-		/// <summary>
-		/// 小数点で取得
-		/// </summary>
-		public double Double { get { return (double)num / den; } }
-	}
+        /// <summary>最小値を取得</summary>
+        public static Fraction Min(Fraction left, Fraction right)
+        {
+            var (common_left, common_right) = CommonDenominator(left, right);
+            return common_left.Numerator < common_right.Numerator ? left : right;
+        }
 
+        /// <summary>絶対値を取得</summary>
+        public static Fraction Abs(Fraction value)
+        {
+            if (value.Numerator >= 0 && value.Denominator < 0) { return new Fraction(value.Numerator, -value.Denominator); }
+            if (value.Numerator < 0 && value.Denominator > 0) { return new Fraction(-value.Numerator, value.Denominator); }
+            if (value.Numerator < 0 && value.Denominator < 0) { return new Fraction(-value.Numerator, -value.Denominator); }
+            return value;
+        }
+
+        /// <summary>分数をべき乗</summary>
+        /// <param name="var_base">底</param>
+        /// <param name="exponent">指数</param>
+        public static Fraction Pow(Fraction var_base, long exponent)
+        {
+            if (exponent == 0) { return new Fraction(1); }
+
+            var result = new Fraction(var_base);
+            if (exponent < 0)
+            {
+                result.Numerator = Pow(var_base.Denominator, -exponent);
+                result.Denominator = Pow(var_base.Numerator, -exponent);
+            }
+            else
+            {
+                result.Numerator = Pow(var_base.Numerator, exponent);
+                result.Denominator = Pow(var_base.Denominator, exponent);
+            }
+            return result;
+        }
+
+    }
 }
