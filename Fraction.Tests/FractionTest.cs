@@ -219,7 +219,6 @@ namespace moriyaki.fraction.Tests
         }
     }
 
-
     // 最大値・最小値・絶対値
     public class MaxMinAbsTest
     {

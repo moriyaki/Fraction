@@ -20,23 +20,25 @@ namespace moriyaki.fraction
             {
                 throw new ArgumentException("Denominator cannot be zero", nameof(denominator));
             }
+            // 約分する
+            var gcd = Gcd(numerator, denominator);
+            this.Numerator = numerator / gcd;
+            this.Denominator = denominator / gcd;
+
             // 分母が負なら分母を正にする
-            if (denominator > 0)
+            if (this.Denominator < 0)
             {
-                this.Numerator = numerator;
-                this.Denominator = denominator;
+                this.Numerator = -this.Numerator;
+                this.Denominator = -this.Denominator;
             }
-            else
-            {
-                this.Numerator = -numerator;
-                this.Denominator = -denominator;
-            }
+
         }
 
         public Fraction(Fraction frac)
         {
-            this.Numerator = frac.Numerator;
-            this.Denominator = frac.Denominator;
+            var gcd = Gcd(frac.Numerator, frac.Denominator);
+            this.Numerator = frac.Numerator / gcd;
+            this.Denominator = frac.Denominator / gcd;
         }
 
         /// <summary>通分するa/c と b/d の通分は ad/cd と bc/cd</summary>
@@ -67,11 +69,11 @@ namespace moriyaki.fraction
             {
                 return Gcd(b, a);
             }
-            while (b != 0)
+            while(b!= 0)
             {
-                var reminder = a % b;
+                var r = a % b;
                 a = b;
-                b = reminder;
+                b = r;
             }
             return a;
         }

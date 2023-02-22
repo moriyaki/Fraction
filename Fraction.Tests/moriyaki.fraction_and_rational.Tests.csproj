@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Fraction\moriyaki.fraction.csproj" />
+    <ProjectReference Include="..\Fraction\moriyaki.fraction_and_rational.csproj" />
   </ItemGroup>
 
 </Project>
